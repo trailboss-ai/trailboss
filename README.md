@@ -158,7 +158,7 @@ Trailboss indexes every file edit agents make with their own tools: Claude Code'
 - **Long prompts:** a response whose prompt is over a model's long-context threshold is priced entirely at the higher rate.
 - **Fast mode:** a Claude Code response recorded with `usage.speed: "fast"` is billed at the model's fast multiplier (LiteLLM's `provider_specific_entry.fast`, e.g. 2× for Opus 5.5; the `fast` field in a price file). A model with no multiplier is priced at its standard rates.
 - **Days** are in your local time.
-- **Prices** come from [LiteLLM's table](https://github.com/BerriAI/litellm), bundled in the binary (`data/prices.json`).
+- **Prices** come from [LiteLLM's table](https://github.com/BerriAI/litellm), bundled in the binary.
 - **Newer prices without a release:** `trailboss prices --refresh` downloads LiteLLM's current table (a plain GET to `raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json`, nothing sent but the request) into `~/.config/trailboss/prices-litellm.json`, which then replaces the bundled prices. It never runs on its own. `trailboss prices` lists the layers and their dates; delete that file to go back to the bundled table.
 - **Overrides:** to change or add a model, put the same shape in `~/.config/trailboss/prices.json`, in $ per million tokens. It wins over both tables, and a refresh never touches it:
 
@@ -189,13 +189,13 @@ Install, options and details: [trailboss-herdr](https://github.com/trailboss-ai/
 ## Shape
 
 ```
-frontends   CLI (JSON out) │ Herdr mod │ later: TUI, web, team
+frontends   CLI (JSON out) │ Herdr mod │ your own, over --json
 core        sources (adapters) → store (SQLite + FTS5) → usage (pricing, plans, quotas, insights, stats)
             fleet (live, events, resume) │ files (changes, review and undo)
 hosts       list / get / send / read terminals (Herdr via hc, tmux)
 ```
 
-Transcripts stay local. The schema carries `machine_id` and `user` so team sync can later share aggregates without transcripts.
+Transcripts stay local: the index lives on your machine and is never sent anywhere.
 
 ## The parts
 
