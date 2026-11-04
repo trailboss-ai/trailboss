@@ -1,0 +1,51 @@
+name: Bug report
+description: Something doesn't work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please remove anything private before submitting: transcript text, tokens, and paths you'd rather not share.
+        Security problems go through a private advisory instead, see SECURITY.md.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start Claude Code in ...
+        2. Run `trailboss ...`
+        3. See ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Trailboss version
+      description: Output of `trailboss --version`, or the commit you built.
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: Fedora 44, macOS 15, ...
+    validations:
+      required: true
+  - type: textarea
+    id: agents
+    attributes:
+      label: Agents and host
+      description: Agent CLIs and versions involved (Claude Code, Codex, opencode, pi, ...), and the host if any (Herdr, tmux).
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output or logs
+      description: Run with `--json` if relevant. Remove anything private.
+      render: shell

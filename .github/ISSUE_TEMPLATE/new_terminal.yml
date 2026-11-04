@@ -1,0 +1,22 @@
+name: Support a new terminal app
+description: Ask for live tracking and resume in another terminal app (zellij, WezTerm, kitty, …).
+labels: [enhancement, host]
+body:
+  - type: input
+    id: app
+    attributes:
+      label: Terminal app
+    validations:
+      required: true
+  - type: textarea
+    id: api
+    attributes:
+      label: How it can be driven
+      description: How to list its terminals (panes/tabs), read one's screen, and type into one, from outside (a CLI, a socket, an API). Links to its docs help.
+    validations:
+      required: true
+  - type: textarea
+    id: restore
+    attributes:
+      label: After a restart
+      description: Does it bring back its terminals after a reboot or a restart, and keep their identity?
