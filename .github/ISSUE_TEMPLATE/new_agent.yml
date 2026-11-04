@@ -1,0 +1,28 @@
+name: Support a new agent
+description: Ask for Trailboss to read another coding agent's sessions.
+labels: [enhancement, agent]
+body:
+  - type: input
+    id: agent
+    attributes:
+      label: Agent
+      description: Name and link.
+    validations:
+      required: true
+  - type: textarea
+    id: where
+    attributes:
+      label: Where it keeps its sessions
+      description: Folder or database, file names, format (JSONL, SQLite, …). Don't paste real transcripts; describe the records, or make a small synthetic one.
+    validations:
+      required: true
+  - type: textarea
+    id: usage
+    attributes:
+      label: Token usage and cost
+      description: Does it record tokens or cost per response? Which fields?
+  - type: input
+    id: resume
+    attributes:
+      label: Resume command
+      description: How to reopen a session by its id, e.g. `myagent --resume <id>`.
