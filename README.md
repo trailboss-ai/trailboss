@@ -66,6 +66,11 @@ trailboss changes --under ~/code/api --since 2026-10-01   # agents' file edits, 
 trailboss review --under .         # sessions that changed files here; then:
 trailboss review claude:<id>       # its files; --diff PATH; --undo (a plan; --yes to do it)
 
+# Spaces in folders (for Herdr's sidebar, or any frontend)
+trailboss folders                  # the folder tree; add NAME [--parent ID], edit, move, remove
+trailboss folders edit f1 --rule billing --rule '~/code/client-*' --rule 'machine:vm-*'
+trailboss folders file <space> f1  # put a space in a folder by hand (--top: at the top level)
+
 # Setup
 trailboss scan                     # what each source found
 trailboss config                   # show ~/.config/trailboss/config.json; --set '<json>' to replace it
@@ -182,6 +187,7 @@ The [Trailboss mod](https://github.com/trailboss-ai/trailboss-herdr) is a thin f
 - **Status block:** agents running, working and waiting; today's cost; the Claude 5-hour window and its pace; a **Resume N** button when a terminal lost its agent. It tracks sessions, notifies about agents outside Herdr, and resumes what a reboot lost when Herdr starts.
 - **Dashboard** (Alt+Shift+T): Live (agents by folder, sub-agents under the agent that started them), Sessions, Usage, Quota and Stats tabs, plus an Insights window (Alt+Shift+I).
 - **Files, editor and Changes** (opt-in): each changed file badged with the agent that changed it; create, rename, move, drag and trash; a multi-tab editor with highlighting, word wrap and find and replace that never overwrites an agent's edit unseen; staging and discarding by hunk; review and undo by session.
+- **Spaces with folders** (opt-in): Herdr's spaces list with folders up to four levels deep. Drag spaces in, or let rules file them by folder or machine; fold a folder and it still shows when something in it needs you; show one folder alone.
 - It can take the places of the insights, session-history, stats and usage-bar mods in your layouts.
 
 Install, options and details: [trailboss-herdr](https://github.com/trailboss-ai/trailboss-herdr).
