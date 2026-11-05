@@ -226,6 +226,6 @@ Built from the Herdr mods agent-resume-plus, insights, session-history, usage-ba
 
 ## License
 
-- **The `trailboss` binary** is free to use. Its source isn't public; the license terms ship with each release. Versions 0.1.0 to 0.3.0 were released under the MIT License, and stay so.
+- **The `trailboss` binary** is free to use under the [Trailboss License](LICENSE), which also ships with each release. Its source isn't public. Versions 0.1.0 to 0.3.0 were released under the MIT License, and stay so.
 - **The adapters, the specification and the Herdr mod** are MIT; see each repository.
 - **The name and logo** are trademarks; see [TRADEMARKS.md](TRADEMARKS.md).

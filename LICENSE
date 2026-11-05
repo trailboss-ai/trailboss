@@ -1,0 +1,93 @@
+Trailboss License
+
+Copyright (c) 2026 Manas Talukdar. All rights reserved.
+
+These terms cover the `trailboss` program and its source code (the "Software").
+They don't cover the parts released under their own licenses: see "Open source
+parts" below.
+
+1. Using the Software
+
+   You may download, install and use the official, unmodified Software, as
+   published at https://github.com/trailboss-ai/trailboss, for any purpose,
+   personal or commercial, on any number of your own machines, free of charge.
+
+2. Pro features
+
+   Some features need a license file from the author ("Pro features"). Using them
+   is subject to the terms supplied with that license file. Without one, the
+   Software works without them.
+
+3. What you may not do
+
+   Unless the author agrees in writing, you may not:
+
+   a. copy or distribute the Software, or make it available to others, other than
+      by pointing them to the official releases;
+   b. modify the Software, or decompile, disassemble or reverse engineer it, except
+      to the extent the law allows despite this limitation;
+   c. get around or disable the checking of license files, or use Pro features
+      without a license file for them;
+   d. offer the Software, or a substantially similar service built from it, to
+      others as a hosted or managed service;
+   e. remove or change any notices of copyright, trademark or license.
+
+4. Source code
+
+   The source code of the Software is not licensed to you. If you have access to it,
+   you may read it, but not use, copy or distribute it, unless the author agrees
+   in writing.
+
+5. Open source parts
+
+   - The adapters (trailboss-adapters), the specification (trailboss-specification)
+     and the Herdr mod (trailboss-herdr) are released under the MIT License, in
+     their own repositories.
+   - The Software includes third-party components under their own licenses, listed
+     in THIRD_PARTY_NOTICES.md. Nothing in these terms limits your rights under
+     those licenses.
+   - Versions 0.1.0 to 0.3.0 of Trailboss were released under the MIT License and
+     remain available under it.
+
+6. Your data
+
+   The Software runs on your machine and reads your coding agents' files there. It
+   doesn't send your transcripts anywhere. It uses the network only as its
+   documentation describes (plan quotas from each provider, with that provider's
+   own sign-in, and price tables when you ask for them).
+
+7. Trademarks
+
+   These terms grant no rights to the Trailboss name or logo. See TRADEMARKS.md at
+   https://github.com/trailboss-ai/trailboss.
+
+8. Ending
+
+   Your rights under these terms end automatically if you break them. Sections 3
+   to 10 continue after that.
+
+9. No warranty
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+10. Limitation of liability
+
+   IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+11. Changes
+
+   The author may change these terms at any time for future versions of the
+   Software. A new version may come with new terms; the terms that came with a
+   version keep applying to that version.
+
+12. Governing law
+
+   These terms are governed by the laws of the State of California, USA, without
+   regard to its conflict-of-law rules, and disputes go to the state or federal
+   courts located in California.
+
+Questions or permission requests: https://github.com/trailboss-ai/trailboss/discussions
