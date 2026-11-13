@@ -68,7 +68,10 @@ trailboss task add "Fix the login redirect. Done when: ..." --agent codex   # th
 trailboss task ls                  # each task: to do, working, needs you, ready, done
 trailboss task show 3              # what it did: last message, commits, files, checks; then:
 trailboss task accept 3 --yes      # fast-forward your branch to it (task rm 3 --yes: drop it)
+trailboss task review 3 --yes      # a second agent reviews it (task add --review: wait for one)
 trailboss agents                   # the definitions task add --agent <name> starts; agents show NAME
+trailboss start codex --task "Look into the flaky login test"   # one agent, no worktree; --yes starts it
+trailboss sweep                    # what the agents and tasks you started are doing, then what's next
 
 # Checkpoints
 trailboss checkpoint save claude:<id>     # the session's folder as a git commit; list, diff N
@@ -120,7 +123,7 @@ Each agent also gets, where its transcript or settings say (null where they don'
 - **Load:** `cpu_pct`, `rss_bytes` and `procs` over its whole process tree (the `cpu` and `mem` columns). An agent making no progress for a while is `stuck` only when it isn't busy either; a busy one (a long build, a test run) is `quiet_busy`.
 - **Background jobs** it left running (`background`, the `jobs` column): Claude Code's background shells and monitors, Codex's processes still alive after their turn. Only listed; nothing is stopped.
 
-The table lists agents that need you first, then done, working and the rest, sub-agents under the agent that started them. `trailboss live --pin <terminal|session>` keeps one at the top (`pinned`, kept in `pins.json` next to the index); `--unpin` lets it go. The `--json` order doesn't change.
+The table lists agents that need you first, then done, working and the rest, sub-agents under the agent that started them. `trailboss live --pin <terminal|session>` keeps one at the top (`pinned`, kept in `pins.json` next to the index); `--unpin` lets it go. A pin goes by itself once its terminal is gone from a running host, or its session is deleted or hasn't run for 30 days. The `--json` order doesn't change.
 
 **Gemini CLI and Copilot CLI** agents show up too, with their session, status, turn and what they need. A running Copilot session writes its tokens only when it ends, so `live` shows them as null with `tokens_note: "not until it ends"`, not 0. Copilot CLI support in `live` and `send` is new and largely untested: treat it as experimental.
 
@@ -240,14 +243,32 @@ trailboss task add --brief-file briefs/ --yes   # one task per .md and .txt file
 
 - **`task add`** shows the plan; with `--yes` it makes a worktree on a new branch `work/<n>-<slug>` off the folder's current branch (`--folder`, default here) and starts the agent in a new Herdr or tmux terminal, nested under the session you ran it from (or `--parent`), with the brief as its first prompt (at least two words: an agent could run a single word as its own command). Your checkout isn't touched. Several briefs (`--brief` or `--brief-file`, repeated) get every worktree made before any agent starts, and a warning when two of them, or a brief and an open task in the same folder, name the same file. A start that fails takes its worktree and branch back.
 - **Where worktrees go:** `worktrees/` next to the index by default; `"tasks": {"worktrees": "../worktrees"}` in the config (relative to the repository's top, or absolute), or `--worktrees DIR` for one command. Never inside an agent's own folder.
-- **`task ls`:** each task's state (to do, working, needs you, ready, done), branch, commits ahead and files changed.
+- **`task ls`:** each task's state (to do, working, needs you, reviewing, ready, done), branch, commits ahead and files changed.
 - **`task show <n>`:** the card to read before accepting: the agent's last message, its commits, each file changed with lines added and removed, checks known to have run (`until` loops on it), and whether `accept` would go through.
-- **`task accept <n> --yes`:** fast-forwards the branch the task started from to the task's branch, then removes the worktree and branch. It never makes a merge commit or rebases: it's refused if a fast-forward isn't possible or the checkout has uncommitted changes.
+- **Review:** with `task add --review` (or `"tasks": {"review": true}` in the config; `--no-review` for one command), a task whose agent is done stays `reviewing` until `task review <n> --yes` has started a second agent, with none of the first one's context, in a new terminal in the task's worktree. It reviews the diff against the brief, writes its notes to `task-reviews/` next to the index and changes nothing. `task show` prints the notes; `trailboss send` passes them back. `--agent` picks the reviewer (default: the task's agent kind, without its rules). Nothing starts a reviewer by itself.
+- **Worktrees inside the repository:** `task add` and `doctor` warn when the worktrees' folder is inside the repository and git doesn't ignore it, with the line to add. Trailboss never edits `.gitignore`.
+- **`task accept <n> --yes`:** fast-forwards the branch the task started from to the task's branch, then removes the worktree and branch. It never makes a merge commit or rebases: it's refused if a fast-forward isn't possible, the checkout has uncommitted changes, or the task is still reviewing (`--force` accepts it without the notes).
 - **`task rm <n> --yes`:** removes the worktree and branch, but keeps commits that aren't merged and uncommitted changes (and says so) unless `--force`.
+
+### Start one agent
+
+`trailboss start <definition>` starts one agent in a new Herdr or tmux terminal, outside a task: no worktree, no branch, no git. Use it for work in the folder as it is (a question, an investigation, a reviewer you'll talk to).
+
+```sh
+trailboss start codex --task "Find why the login test is flaky" --in ~/src/app --name flaky
+```
+
+Without `--yes` it shows the command it would run. `--task` or `--task-file` is its first prompt (at least two words), after the definition's `rules`; with neither it gets the rules alone, or waits for you. `--name` labels it (default the definition's name): `live` and `resume` show the label, kept in `started.json` next to the index (never the prompt). A repository's definition needs approving first, as for tasks.
+
+### Sweep
+
+`trailboss sweep` answers "what are my agents doing?" for the session you run it from (or `--parent`): the tasks it added, the agents it started, and theirs, a few levels down. Each row has its state, when its last turn ended, the first line of its last message (from the local index, shown only to you), and for a task its branch and commits. When a task's branch has a PR, `gh` adds its state, CI, conflicts and unresolved review threads; without `gh`, those are blank with a note.
+
+Then `next`: one step per row, the decisions only you can make first (answer an agent, accept a task, merge a PR, fix failing CI, resolve conflicts or threads), then what agents are doing on their own, then agents at rest that ask nothing. Sweep types nothing and changes nothing.
 
 ### Agent definitions
 
-`task add --agent <name>` starts a named definition: a small JSON file, `<name>.json`.
+`task add --agent <name>` and `trailboss start <name>` start a named definition: a small JSON file, `<name>.json`.
 
 ```json
 {
