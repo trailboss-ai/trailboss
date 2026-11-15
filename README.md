@@ -261,6 +261,16 @@ trailboss start codex --task "Find why the login test is flaky" --in ~/src/app -
 
 Without `--yes` it shows the command it would run. `--task` or `--task-file` is its first prompt (at least two words), after the definition's `rules`; with neither it gets the rules alone, or waits for you. `--name` labels it (default the definition's name): `live` and `resume` show the label, kept in `started.json` next to the index (never the prompt). A repository's definition needs approving first, as for tasks.
 
+### Branch a session
+
+`trailboss branch <AGENT:ID>` asks a side question in a fork of a Claude Code session, leaving the session itself alone: the agent's own fork runs in a new terminal in the session's folder, with your question as its first prompt.
+
+```sh
+trailboss branch claude:<id> --at 12 --prompt "Why did we pick SQLite for the index?"
+```
+
+Without `--yes` it shows the plan. `--at` asks the fork to set aside what came after that turn (numbered as `thread` numbers them), quoting your prompt there; without it, the question follows the whole session. The fork shows in `live`, `resume`, `sweep` and `thread --tree`, hanging from the turn it was asked from. Other agents are refused until their CLIs offer a fork. In Herdr, the thread pane's **⑂ Branch from here** does the same from a turn.
+
 ### Sweep
 
 `trailboss sweep` answers "what are my agents doing?" for the session you run it from (or `--parent`): the tasks it added, the agents it started, and theirs, a few levels down. Each row has its state, when its last turn ended, the first line of its last message (from the local index, shown only to you), and for a task its branch and commits. When a task's branch has a PR, `gh` adds its state, CI, conflicts and unresolved review threads; without `gh`, those are blank with a note.
@@ -326,7 +336,7 @@ The [Trailboss mod](https://github.com/trailboss-ai/trailboss-herdr) is a thin f
 
 - **Status block:** agents running, working and waiting; today's cost; the Claude 5-hour window and its pace; a **Resume N** button when a terminal lost its agent. It tracks sessions, notifies about agents outside Herdr, and resumes what a reboot lost when Herdr starts.
 - **Dashboard** (Alt+Shift+T): Live (agents by folder, sub-agents under the agent that started them, and **Sweep ▸** on a row that started agents or tasks), Sessions, Usage, Quota and Stats tabs, plus an Insights window (Alt+Shift+I).
-- **Thread** (Alt+Shift+C in an agent's terminal): its conversation beside the terminal, by day, with search, copy, copy code, and quote into the prompt; **Tree** shows the session among its forks, sub-agents and the agents it started.
+- **Thread** (Alt+Shift+C in an agent's terminal): its conversation beside the terminal, by day, with search, copy, copy code, and quote into the prompt; **Tree** shows the session among its forks, sub-agents and the agents it started. **⑂ Branch from here** asks a side question in a fork, as of a turn.
 - **Install and update:** the mod checks the CLI's version and offers **Install** or **Update** when it's missing or too old, downloading the release to `~/.local/bin` only when you click.
 - **Files, editor and Changes** (opt-in): each changed file badged with the agent that changed it; create, rename, move, drag and trash; a multi-tab editor with highlighting, word wrap and find and replace that never overwrites an agent's edit unseen; staging and discarding by hunk; review and undo by session.
 - **Spaces with folders** (opt-in): Herdr's spaces list with folders up to four levels deep. Drag spaces in, or let rules file them by folder or machine; fold a folder and it still shows when something in it needs you; show one folder alone.
