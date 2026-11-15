@@ -172,7 +172,7 @@ Desktop notifications say only the kind of request ("Run a command", "Edit a fil
 
 Shortly after typing it checks and says what came of it: `sent` (a turn started), `held` (the agent queued it for later; Trailboss never presses "send now" for you) or `no reaction`. `--no-wait` skips the check. The message itself is never logged or printed.
 
-`--queue` covers agents mid-turn (working, or waiting on you): instead of being skipped, each gets the message once that turn ends, only in the session it was queued for, one message per rest. Queued messages are kept in `send-queue.json` next to the index, readable only by you, and survive a restart. They're typed by a background delivery that `trailboss events`, `watch` or the Herdr block starts, so one of them has to be running; `send --queue` and `trailboss queue` warn when nothing has looked in the last 5 minutes. `trailboss queue` lists what's waiting and the last ones typed, with what came of them; `trailboss queue rm <id>…` (or `--all`) takes them back.
+`--queue` covers agents mid-turn (working, or waiting on you): instead of being skipped, each gets the message once that turn ends, only in the session it was queued for, one message per rest. Queued messages are kept in `send-queue.json` next to the index, readable only by you, and survive a restart. They're typed by a background delivery that `trailboss events`, `watch` or the Herdr block starts, so one of them has to be running; `send --queue` and `trailboss queue` warn when nothing has looked in the last 5 minutes. `trailboss queue` lists what's waiting and the last ones typed, with what came of them; `trailboss queue rm <id>…` (or `--all`) takes them back. With `--wait`, `send` stays in the foreground and delivers them itself until each is typed or taken back (`--timeout`, 30 minutes by default); it exits 0 only when all of them went.
 
 ### Until a check passes
 
@@ -259,9 +259,10 @@ trailboss task add --brief-file briefs/ --yes   # one task per .md and .txt file
 ```
 
 - **`task add`** shows the plan; with `--yes` it makes a worktree on a new branch `work/<n>-<slug>` off the folder's current branch (`--folder`, default here) and starts the agent in a new Herdr or tmux terminal, nested under the session you ran it from (or `--parent`), with the brief as its first prompt (at least two words: an agent could run a single word as its own command). Your checkout isn't touched. Several briefs (`--brief` or `--brief-file`, repeated) get every worktree made before any agent starts, and a warning when two of them, or a brief and an open task in the same folder, name the same file. A start that fails takes its worktree and branch back. The plan names where the definition comes from (a repository's file, yours, or built in) and the command it will run.
+- **Brief templates:** `task add --brief-template <name>` puts each brief into `.trailboss/briefs/<name>.md` from the repository, in place of `{{brief}}`, with the rest (say, the folder's standing rules) copied as it is. `trailboss task templates` lists them.
 - **Where worktrees go:** `worktrees/` next to the index by default; `"tasks": {"worktrees": "../worktrees"}` in the config (relative to the repository's top, or absolute), or `--worktrees DIR` for one command. Never inside an agent's own folder.
 - **`task ls`:** each task's state (to do, working, needs you, reviewing, ready, done), branch, commits ahead and files changed.
-- **`task show <n>`:** the card to read before accepting: the agent's last message, its commits, each file changed with lines added and removed, checks known to have run (`until` loops on it), and whether `accept` would go through.
+- **`task show <n>`:** the card to read before accepting: the agent's last message, its commits, each file changed with lines added and removed, its evidence (the latest run of each test or build the agent ran, with pass or fail, and how `until` loops on it ended; a result from before the latest commit is marked stale), and whether `accept` would go through.
 - **Review:** with `task add --review` (or `"tasks": {"review": true}` in the config; `--no-review` for one command), a task whose agent is done stays `reviewing` until `task review <n> --yes` has started a second agent, with none of the first one's context, in a new terminal in the task's worktree. It reviews the diff against the brief, writes its notes to `task-reviews/` next to the index and changes nothing. `task show` prints the notes; `trailboss task report <n> --yes` passes them back to the task's agent through the send queue (shown in full first). Notes are for the commit the reviewer saw: once the task's agent commits again, the task is back to `reviewing`, with the command to review it again. `--agent` picks the reviewer (default: the task's agent kind, without its rules). Nothing starts a reviewer by itself.
 - **Worktrees inside the repository:** `task add` and `doctor` warn when the worktrees' folder is inside the repository and git doesn't ignore it, with the line to add. Trailboss never edits `.gitignore`.
 - **`task accept <n> --yes`:** fast-forwards the branch the task started from to the task's branch, then removes the worktree and branch. It never makes a merge commit or rebases: it's refused if a fast-forward isn't possible, the checkout has uncommitted changes, or the task is still reviewing (`--force` accepts it without the notes).
@@ -313,6 +314,8 @@ They're read from a repository's `.trailboss/agents/` (shared with the repo), yo
 
 A repository's definitions come with the code you cloned and can set flags, including ones that skip an agent's permission prompts. So each must be approved before its first use, and again after it changes: `trailboss agents trust <name>` shows it and the command it runs, and `--yes` approves it. Until then `task add` refuses it and says which file to read. `agents` shows each one's approval and which definition it replaces. Yours and the built-in ones need no approval.
 
+`"permission": "read-only" | "ask" | "auto"` sets the agent's own permission flags (Claude Code for now; other kinds refuse it until theirs are mapped). Nothing maps to skipping permissions. `trailboss agents new <name> --kind <kind> [--model …] [--arg …] [--rules …] [--permission …] [--repo]` writes a definition (shown first; `--yes` writes it, never over an existing file; a repository's still needs `agents trust`), and `trailboss agents check` lists every definition with its problems, exiting 1 if there are any (`doctor` checks them too). Three read-only starters are built in: `investigate`, `review` and `test`.
+
 ### Checkpoints
 
 A checkpoint is a session's folder saved as a git commit, to go back to.
@@ -348,12 +351,16 @@ A checkpoint is a session's folder saved as a git commit, to go back to.
 - **Resumed sessions:** Claude Code's running total isn't consistent across a resume; it sometimes restarts lower. Trailboss keeps the highest total the file records and never adds totals together, so a resume that restarts the count can make it an undercount.
 - **Sub-agents** aren't added in: Claude Code's total for the main session is shown as is.
 
+### Spend alerts
+
+Set `alerts.session_usd` (a session's cost), `alerts.folder_usd` (a folder's spend today) or `alerts.day_usd` (everything today) in the config. Crossing one marks the session's row in `live` (`alert`) and sends one `spend_alert` event through `events` and `watch` (`watch --desktop` notifies), once per crossing. Crossings are kept in `alerts.json` next to the index.
+
 ## In Herdr
 
 The [Trailboss mod](https://github.com/trailboss-ai/trailboss-herdr) is a thin frontend over the CLI's JSON:
 
 - **Status block:** agents running, working and waiting; today's cost; the Claude 5-hour window and its pace; a **Resume N** button when a terminal lost its agent. It tracks sessions, notifies about agents outside Herdr, and resumes what a reboot lost when Herdr starts.
-- **Dashboard** (Alt+Shift+T): Live (agents by folder, sub-agents under the agent that started them, and **Sweep ▸** on a row that started agents or tasks), Sessions, Usage, Quota and Stats tabs, plus an Insights window (Alt+Shift+I).
+- **Dashboard** (Alt+Shift+T): Live (agents by folder, sub-agents under the agent that started them, a running `until` loop on its row with Pause, Resume and Stop, and **Sweep ▸** on a row that started agents or tasks), Sessions, Usage, Quota and Stats tabs, plus an Insights window (Alt+Shift+I).
 - **Thread** (Alt+Shift+C in an agent's terminal): its conversation beside the terminal, by day, with search, copy, copy code, and quote into the prompt; **Tree** shows the session among its forks, sub-agents and the agents it started. **⑂ Branch from here** asks a side question in a fork, as of a turn.
 - **Install and update:** the mod checks the CLI's version and offers **Install** or **Update** when it's missing or too old, downloading the release to `~/.local/bin` only when you click.
 - **Files, editor and Changes** (opt-in): each changed file badged with the agent that changed it; create, rename, move, drag and trash; a multi-tab editor with highlighting, word wrap and find and replace that never overwrites an agent's edit unseen; staging and discarding by hunk; review and undo by session.
