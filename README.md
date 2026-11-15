@@ -136,6 +136,18 @@ The table lists agents that need you first, then done, working and the rest, sub
 
 Tracking has to happen *before* the reboot. In Herdr the mod does it (and runs `resume --auto` when Herdr starts). Elsewhere, run `trailboss track` every minute or so from a systemd user timer or cron. Sessions skipped come with a reason: open elsewhere, folder gone, no saved conversation, or a folder name that can't be typed safely. Every resume, failure, skip and forgotten session is logged to `resume.log.jsonl` next to `tracked.json`, rolling over at 256 KB; `trailboss log` shows the latest.
 
+### Unread and recap
+
+`trailboss live` marks a session that finished a turn you haven't seen: one that ended after you last marked it seen and after your last prompt to it (replying means you saw it). A session's row also counts its branches and started agents with unread replies.
+
+```sh
+trailboss seen claude:<id>            # mark it seen; --unread marks its last turn unread again
+trailboss recap                       # what each session with unread turns did while you were away
+trailboss recap claude:<id> --since 2h
+```
+
+A recap is one line ("api while you were away (42m): 3 turns, 6 files, 11 commands, cargo test passed, at prompt"), then the last thing it said, its model, context and cost. Marks are kept in `seen.json` next to the index (session ids and times only). In Herdr, Live rows show the unread badge and the recap, and going to an agent from the mod marks it seen.
+
 ### Notifications
 
 `trailboss events` compares the agents running now with the last look and reports what changed:
