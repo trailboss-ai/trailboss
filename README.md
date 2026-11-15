@@ -46,6 +46,7 @@ trailboss search flaky login test  # full-text search, best matches first
 trailboss search --all ENOENT      # also thinking and tool output
 trailboss thread claude:<id>       # one session as a conversation: each prompt, the reply, tokens, cost
 trailboss thread claude:<id> --tree   # the session among its forks, sub-agents and the agents it started
+trailboss thread tag claude:<id> 7 "auth refactor"   # label where a topic starts (--rm to take it off)
 trailboss delete codex <id> --yes  # delete one session's transcript (shows what without --yes)
 
 # Running agents
@@ -104,6 +105,7 @@ trailboss version                  # the version, and the --json api version fro
 trailboss scan                     # what each source found
 trailboss config                   # show ~/.config/trailboss/config.json; --set '<json>' to replace it
 trailboss --json sessions          # any command as JSON, for scripts and the Herdr mod
+trailboss skill                    # a short guide for coding agents that drive Trailboss
 ```
 
 Sessions are read from Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`, `archived_sessions`), opencode (`~/.local/share/opencode/opencode.db`, read-only), pi (`~/.pi/agent/sessions`), Gemini CLI (`~/.gemini/tmp`) and Copilot CLI (`~/.copilot/session-state`). Trailboss never writes to agents' folders, with one exception you name and confirm: `delete`.
@@ -124,7 +126,7 @@ Each agent also gets, where its transcript or settings say (null where they don'
 - **Load:** `cpu_pct`, `rss_bytes` and `procs` over its whole process tree (the `cpu` and `mem` columns). An agent making no progress for a while is `stuck` only when it isn't busy either; a busy one (a long build, a test run) is `quiet_busy`.
 - **Background jobs** it left running (`background`, the `jobs` column): Claude Code's background shells and monitors, Codex's processes still alive after their turn. Only listed; nothing is stopped.
 
-The table lists agents that need you first, then done, working and the rest, sub-agents under the agent that started them. `trailboss live --pin <terminal|session>` keeps one at the top (`pinned`, kept in `pins.json` next to the index); `--unpin` lets it go. A pin goes by itself once its terminal is gone from a running host, or its session is deleted or hasn't run for 30 days. The `--json` order doesn't change.
+The table lists agents that need you first, then done, working and the rest, sub-agents under the agent that started them. `trailboss live --pin <terminal|session>` keeps one at the top (`pinned`, kept in `pins.json` next to the index); `--unpin` with either its terminal or its session lets it go. A pin goes by itself once its terminal is gone from a running host, or its session is deleted or hasn't run for 30 days. The `--json` order doesn't change.
 
 **Gemini CLI and Copilot CLI** agents show up too, with their session, status, turn and what they need. A running Copilot session writes its tokens only when it ends, so `live` shows them as null with `tokens_note: "not until it ends"`, not 0. Copilot CLI support in `live` and `send` is new and largely untested: treat it as experimental.
 
@@ -145,6 +147,8 @@ trailboss seen claude:<id>            # mark it seen; --unread marks its last tu
 trailboss recap                       # what each session with unread turns did while you were away
 trailboss recap claude:<id> --since 2h
 ```
+
+Recaps count shell commands, tests and builds for every agent (pass or fail where the agent records it).
 
 A recap is one line ("api while you were away (42m): 3 turns, 6 files, 11 commands, cargo test passed, at prompt"), then the last thing it said, its model, context and cost. Marks are kept in `seen.json` next to the index (session ids and times only). In Herdr, Live rows show the unread badge and the recap, and going to an agent from the mod marks it seen.
 
@@ -181,7 +185,7 @@ trailboss until --max-cost 2 --detach claude:<id> -- npm test
 
 - **Limits:** it stops at 10 rounds, $5 spent by the session since the loop started, or 2 hours (`--max-rounds`, `--max-cost`, `--max-hours`); when it stops making progress; or when the session ends.
 - **Slow checks:** a check still running after 10 minutes (`--check-timeout`) is killed with everything it started, and counts as a failed round.
-- **Limits on your plan:** when a Claude or Codex quota is used up it waits for the reset. A turn that ended on a rate limit isn't a round: it waits for the retry time, then checks once without counting it.
+- **Limits on your plan:** when a Claude or Codex quota is used up it waits for the reset. A turn that ended on a rate limit isn't a round: it waits for the retry time its error gave (`retry_at_ms` on `live` rows), then checks once without counting it.
 - **Your draft:** it never types over text in a Claude Code, Codex, Gemini CLI, pi or opencode input box; it waits and tries again.
 - **Steering:** `trailboss until ls` lists the loops on this machine; `until pause|resume|stop <loop|session|terminal|all>` steers them from any terminal. A paused loop runs nothing and types nothing, and its time doesn't count. `stop` kills a running check. A second loop on the same session is refused.
 - **In the background:** `--detach` keeps the loop going after the terminal closes, logging to a file in `until/` next to the index (`until ls` says where). `--json` prints one line per round.
