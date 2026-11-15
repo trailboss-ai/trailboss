@@ -45,6 +45,7 @@ trailboss sessions --under ~/code --filter login   # also --agent codex,pi
 trailboss search flaky login test  # full-text search, best matches first
 trailboss search --all ENOENT      # also thinking and tool output
 trailboss thread claude:<id>       # one session as a conversation: each prompt, the reply, tokens, cost
+trailboss thread claude:<id> --tree   # the session among its forks, sub-agents and the agents it started
 trailboss delete codex <id> --yes  # delete one session's transcript (shows what without --yes)
 
 # Running agents
@@ -107,7 +108,7 @@ trailboss --json sessions          # any command as JSON, for scripts and the He
 
 Sessions are read from Claude Code (`~/.claude/projects`), Codex (`~/.codex/sessions`, `archived_sessions`), opencode (`~/.local/share/opencode/opencode.db`, read-only), pi (`~/.pi/agent/sessions`), Gemini CLI (`~/.gemini/tmp`) and Copilot CLI (`~/.copilot/session-state`). Trailboss never writes to agents' folders, with one exception you name and confirm: `delete`.
 
-`trailboss thread AGENT:ID` shows one session as a conversation: a turn per prompt, with its reply, model, tokens, cost, time and how many tool results it had. Slash commands are left out; a background task's report is marked `"from": "agent"`.
+`trailboss thread AGENT:ID` shows one session as a conversation: a turn per prompt, with its reply, model, tokens, cost, time and how many tool results it had. Slash commands are left out; a background task's report is marked `"from": "agent"`. With `--tree` it shows the work around the session instead, one line per turn like `git log --graph`: its Claude Code forks, sub-agents, and the agents and tasks started from it each branch off the turn that was running when they started. Naming any session in the tree shows the whole tree; `--json` gives the nodes in drawing order.
 
 Every command first indexes whatever's new since the last run, into `~/.local/share/trailboss/index.db`, a private folder. The index holds transcript text, so it stays on your machine. It's only a cache: delete it and it's rebuilt. A new Trailboss version that changes its layout rebuilds it on the first run, which takes a few seconds. If you run Trailboss from more than one install (say Herdr's and your shell's), keep them on the same version, or each rebuilds the other's index.
 
@@ -324,8 +325,8 @@ A checkpoint is a session's folder saved as a git commit, to go back to.
 The [Trailboss mod](https://github.com/trailboss-ai/trailboss-herdr) is a thin frontend over the CLI's JSON:
 
 - **Status block:** agents running, working and waiting; today's cost; the Claude 5-hour window and its pace; a **Resume N** button when a terminal lost its agent. It tracks sessions, notifies about agents outside Herdr, and resumes what a reboot lost when Herdr starts.
-- **Dashboard** (Alt+Shift+T): Live (agents by folder, sub-agents under the agent that started them), Sessions, Usage, Quota and Stats tabs, plus an Insights window (Alt+Shift+I).
-- **Thread** (Alt+Shift+C in an agent's terminal): its conversation beside the terminal, by day, with search, copy, copy code, and quote into the prompt.
+- **Dashboard** (Alt+Shift+T): Live (agents by folder, sub-agents under the agent that started them, and **Sweep ▸** on a row that started agents or tasks), Sessions, Usage, Quota and Stats tabs, plus an Insights window (Alt+Shift+I).
+- **Thread** (Alt+Shift+C in an agent's terminal): its conversation beside the terminal, by day, with search, copy, copy code, and quote into the prompt; **Tree** shows the session among its forks, sub-agents and the agents it started.
 - **Install and update:** the mod checks the CLI's version and offers **Install** or **Update** when it's missing or too old, downloading the release to `~/.local/bin` only when you click.
 - **Files, editor and Changes** (opt-in): each changed file badged with the agent that changed it; create, rename, move, drag and trash; a multi-tab editor with highlighting, word wrap and find and replace that never overwrites an agent's edit unseen; staging and discarding by hunk; review and undo by session.
 - **Spaces with folders** (opt-in): Herdr's spaces list with folders up to four levels deep. Drag spaces in, or let rules file them by folder or machine; fold a folder and it still shows when something in it needs you; show one folder alone.
