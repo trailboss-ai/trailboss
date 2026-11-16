@@ -52,6 +52,7 @@ trailboss delete codex <id> --yes  # delete one session's transcript (shows what
 # Running agents
 trailboss live                     # agents running now: where, status, why it needs you, model, context, cost
 trailboss live --pin t3            # keep an agent at the top (--unpin to let it go)
+trailboss live --board             # agents grouped by state; --settle <t> parks one until it needs you, --quiet <t> hushes a background worker
 trailboss watch --desktop          # notify when an agent needs you or finishes a turn (30 s+)
 trailboss events --json            # what changed since the last look, for scripts and frontends
 trailboss track                    # record which session runs where (from a timer, outside Herdr)
@@ -264,6 +265,7 @@ trailboss task add --brief-file briefs/ --yes   # one task per .md and .txt file
 - **`task ls`:** each task's state (to do, working, needs you, reviewing, ready, done), branch, commits ahead and files changed.
 - **`task show <n>`:** the card to read before accepting: the agent's last message, its commits, each file changed with lines added and removed, its evidence (the latest run of each test or build the agent ran, with pass or fail, and how `until` loops on it ended; a result from before the latest commit is marked stale), and whether `accept` would go through.
 - **Review:** with `task add --review` (or `"tasks": {"review": true}` in the config; `--no-review` for one command), a task whose agent is done stays `reviewing` until `task review <n> --yes` has started a second agent, with none of the first one's context, in a new terminal in the task's worktree. It reviews the diff against the brief, writes its notes to `task-reviews/` next to the index and changes nothing. `task show` prints the notes; `trailboss task report <n> --yes` passes them back to the task's agent through the send queue (shown in full first). Notes are for the commit the reviewer saw: once the task's agent commits again, the task is back to `reviewing`, with the command to review it again. `--agent` picks the reviewer (default: the task's agent kind, without its rules). Nothing starts a reviewer by itself.
+- **Later:** `task add --queue` (or more than `tasks.max_parallel` task agents working) records the task and makes nothing until there's room; `--after <n>` waits until task n is accepted, `--at <time>` until a time. A look (`events`, `watch`, the Herdr block) starts it once it's due, at most once; `task rm` takes it back. `--auto-review` (or `tasks.auto_review`) starts the reviewer on its own, once per new commit, when the task's agent comes to rest with commits.
 - **Worktrees inside the repository:** `task add` and `doctor` warn when the worktrees' folder is inside the repository and git doesn't ignore it, with the line to add. Trailboss never edits `.gitignore`.
 - **`task accept <n> --yes`:** fast-forwards the branch the task started from to the task's branch, then removes the worktree and branch. It never makes a merge commit or rebases: it's refused if a fast-forward isn't possible, the checkout has uncommitted changes, or the task is still reviewing (`--force` accepts it without the notes).
 - **`task rm <n> --yes`:** removes the worktree and branch, but keeps commits that aren't merged and uncommitted changes (and says so) unless `--force`.
@@ -287,6 +289,8 @@ trailboss branch claude:<id> --at 12 --prompt "Why did we pick SQLite for the in
 ```
 
 Without `--yes` it shows the plan. `--at` asks the fork to set aside what came after that turn (numbered as `thread` numbers them), quoting your prompt there; without it, the question follows the whole session. The fork shows in `live`, `resume`, `sweep` and `thread --tree`, hanging from the turn it was asked from. Other agents are refused until their CLIs offer a fork. In Herdr, the thread pane's **⑂ Branch from here** does the same from a turn.
+
+`--worktree` runs the fork in a new git worktree of its own, on a new branch `branch/<n>-<slug>`, starting from turn N's automatic checkpoint when there is one (else the folder's `HEAD`), so it can change files without touching yours. It's kept as a task: `task show`, `task review`, `task accept` and `task rm` work on it. The plan suggests it when the session's folder has uncommitted changes.
 
 `trailboss report <AGENT:ID>` sends the branch's last reply back to the session it came from, after a line marking it as quoted, not instructions from you. Without `--yes` it shows the exact text; with it, the message waits in the send queue until that session is at rest with no draft of yours in its input box, is typed once, and `trailboss queue rm` takes it back.
 
@@ -353,7 +357,7 @@ A checkpoint is a session's folder saved as a git commit, to go back to.
 
 ### Spend alerts
 
-Set `alerts.session_usd` (a session's cost), `alerts.folder_usd` (a folder's spend today) or `alerts.day_usd` (everything today) in the config. Crossing one marks the session's row in `live` (`alert`) and sends one `spend_alert` event through `events` and `watch` (`watch --desktop` notifies), once per crossing. Crossings are kept in `alerts.json` next to the index.
+Set `alerts.session_usd` (a session's cost), `alerts.folder_usd` (a folder's spend today) or `alerts.day_usd` (everything today) in the config. Crossing a session or folder limit marks the session's row in `live` (`alert`); every crossing, the day's included, sends one `spend_alert` event through `events` and `watch` (`watch --desktop` notifies), once per crossing. Crossings are kept in `alerts.json` next to the index.
 
 ## In Herdr
 
