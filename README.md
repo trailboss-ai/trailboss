@@ -10,6 +10,7 @@ Trailboss works across Claude Code, Codex, opencode, pi, Gemini CLI and Copilot 
 - **Notifications:** when an agent needs you or finishes a turn, and why it needs you, on the desktop or in Herdr.
 - **Send and keep going:** type a message into idle agents, queue one for an agent mid-turn, or keep a session going until a check like `cargo test` passes.
 - **Tasks:** start an agent on a brief in its own git worktree and branch, see what it did, and merge it when you accept it.
+- **Teams:** a lead agent and its members (implementers, reviewers, investigators) on one task, started within a plan you approve, with a dollar and hour cap.
 - **Checkpoints:** save a session's folder as a git commit, by hand or after every turn, and put it back.
 - **Resume:** bring sessions back after a reboot or Herdr restart, in the same folder with the same flags.
 - **Session history and search:** full-text search across every agent's transcripts (optionally their thinking and tool output too), then resume any hit in place, or read it as a conversation.
@@ -17,6 +18,7 @@ Trailboss works across Claude Code, Codex, opencode, pi, Gemini CLI and Copilot 
 - **Plans and quotas:** each subscription against what its usage would cost at API prices; 5-hour and weekly windows, reset times and pace for Claude, Codex and Cursor.
 - **Delivery stats:** merged PRs, time to merge, AI-attributed share, and $ per merged PR, exact and estimated.
 - **Which agent changed what:** every changed file attributed to the agent session that changed it, exactly or probably; review a session's changes and undo them.
+- **Local server:** `trailboss serve` gives other frontends the same JSON the CLI prints, on `127.0.0.1`, behind a token.
 - **In Herdr:** a status block, a dashboard, and opt-in agent-aware Files, editor and Changes panels ([below](#in-herdr)).
 
 ## Install
@@ -58,6 +60,7 @@ trailboss events --json            # what changed since the last look, for scrip
 trailboss track                    # record which session runs where (from a timer, outside Herdr)
 trailboss resume --dry-run         # what a resume would type, and what it would skip and why
 trailboss log                      # what resume did: resumed, failed, skipped, forgotten
+trailboss serve                    # a local server for frontends: the same JSON, behind a token
 
 # Talking to agents
 trailboss send --to t3 "rebase on main"   # who would get it; --yes types it (--to all, repeatable)
@@ -74,6 +77,8 @@ trailboss task accept 3 --yes      # fast-forward your branch to it (task rm 3 -
 trailboss task review 3 --yes      # a second agent reviews it (task add --review: wait for one)
 trailboss agents                   # the definitions task add --agent <name> starts; agents show NAME
 trailboss start codex --task "Look into the flaky login test"   # one agent, no worktree; --yes starts it
+trailboss team start build --task "Add CSV export"   # a lead and its members within a plan; --yes starts the lead
+trailboss team status             # each team: members, states, cost against its cap; team stop N --yes
 trailboss sweep                    # what the agents and tasks you started are doing, then what's next
 
 # Checkpoints
@@ -122,7 +127,7 @@ Every command first indexes whatever's new since the last run, into `~/.local/sh
 Each agent also gets, where its transcript or settings say (null where they don't):
 
 - **Its turn:** `turn` and `turn_ended_ms`, and `status_since` (shown as `for`, "12m").
-- **Why it needs you:** `needs`, also a column: "Plan to approve", a question's first words, the command or edit it asks permission for ("Run: npm test", "Edit src/main.rs"), "Rate limited", or the error its turn ended on. `needs_kind` says which kind (`run`, `edit`, `plan`, `question`, `reply`, …).
+- **Why it needs you:** `needs`, also a column: "Plan to approve", a question's first words, the command or edit it asks permission for ("Run: npm test", "Edit src/main.rs"), "Rate limited", or the error its turn ended on. `needs_kind` says which kind (`run`, `edit`, `plan`, `question`, `reply`, …). An agent that seems to spin rather than work needs you too, even while it works: the same tool error again and again (`same_error`), the same call getting the same result (`same_call`), a turn that ended saying it would do something without doing it (`stopped_short`), waiting on a sub-agent that has gone quiet (`quiet_subagent`), or an `until` check still failing after several rounds (`still_failing`). Waiting on a build or polling doesn't count. Claude Code, Codex, pi and Copilot CLI for now; nothing is typed into the agent.
 - **Model and context:** `model` from its last response, `effort` where the agent records one, and how full its context window is (`context_tokens`, `context_window`, `context_pct`).
 - **Load:** `cpu_pct`, `rss_bytes` and `procs` over its whole process tree (the `cpu` and `mem` columns). An agent making no progress for a while is `stuck` only when it isn't busy either; a busy one (a long build, a test run) is `quiet_busy`.
 - **Background jobs** it left running (`background`, the `jobs` column): Claude Code's background shells and monitors, Codex's processes still alive after their turn. Only listed; nothing is stopped.
@@ -280,6 +285,21 @@ trailboss start codex --task "Find why the login test is flaky" --in ~/src/app -
 
 Without `--yes` it shows the command it would run. `--task` or `--task-file` is its first prompt (at least two words), after the definition's `rules`; with neither it gets the rules alone, or waits for you. `--name` labels it (default the definition's name): `live` and `resume` show the label, kept in `started.json` next to the index (never the prompt). A repository's definition needs approving first, as for tasks.
 
+### Teams
+
+A team is a lead agent and the members it may start, for one task: `trailboss team start <team> --task "…"` shows the plan (each role, the agent definition it starts, how many of each, the folder, a dollar and hour cap, and an estimated cost). With `--yes` it starts the lead alone, in a new terminal; the lead starts members as it needs them with `task add --role`, `task review --role` or `start --role`, and anything outside the plan you approved (another role or definition, more members than a role allows, another folder, past the cap) is refused, as is any start by a member. Members' work is ordinary tasks: you review, accept or remove it as always.
+
+```sh
+trailboss team ls                  # teams you can start: built in, yours, and the repository's
+trailboss team start build --task "Add CSV export to the reports page" --yes
+trailboss team status              # members, their states and cost against the cap
+trailboss team stop 1 --yes        # no more members start; queued ones are taken back
+```
+
+- **Built in:** `build` (a lead, two implementers in worktrees of their own, two reviewers) and `investigate` (a lead and three read-only investigators).
+- **Yours and the repository's:** `~/.config/trailboss/teams/<name>.json` and `.trailboss/teams/<name>.json`. A repository's team starts only once you trust it (`trailboss team trust <name> --yes`), and each repository agent definition it names needs approving too.
+- **The cap** (default $20 and 4 hours; `--dollars`, `--hours`) stops new members from starting, never a running agent. `team stop` closes the team and names the members still open for you to close; it types nothing and removes no work.
+
 ### Branch a session
 
 `trailboss branch <AGENT:ID>` asks a side question in a fork of a Claude Code session, leaving the session itself alone: the agent's own fork runs in a new terminal in the session's folder, with your question as its first prompt.
@@ -359,12 +379,18 @@ A checkpoint is a session's folder saved as a git commit, to go back to.
 
 Set `alerts.session_usd` (a session's cost), `alerts.folder_usd` (a folder's spend today) or `alerts.day_usd` (everything today) in the config. Crossing a session or folder limit marks the session's row in `live` (`alert`); every crossing, the day's included, sends one `spend_alert` event through `events` and `watch` (`watch --desktop` notifies), once per crossing. Crossings are kept in `alerts.json` next to the index.
 
+### Local server
+
+`trailboss serve` runs a server on `127.0.0.1` (`--port`, default 7420) for frontends that would otherwise run the CLI and poll. `GET /live`, `/live/board`, `/sessions`, `/search?q=`, `/thread/<session>`, `/recap`, `/usage`, `/quota`, `/plans`, `/insights`, `/stats`, `/task`, `/queue`, `/doctor` and `/version` answer exactly what the command prints with `--json`, taking its flags as query options. It only answers reads: no actions, no typing, nothing started. It keeps the index current on its own (`--interval`), and the CLI keeps working beside it.
+
+Every request needs a token: the first start makes one, keeps it in `serve-token` next to the index, and prints it once as a URL (`http://127.0.0.1:7420/#token=…`); send it as `Authorization: Bearer <token>`. Requests from other web pages are refused. The protocol is in the [specification](https://github.com/trailboss-ai/trailboss-specification).
+
 ## In Herdr
 
 The [Trailboss mod](https://github.com/trailboss-ai/trailboss-herdr) is a thin frontend over the CLI's JSON:
 
 - **Status block:** agents running, working and waiting; today's cost; the Claude 5-hour window and its pace; a **Resume N** button when a terminal lost its agent. It tracks sessions, notifies about agents outside Herdr, and resumes what a reboot lost when Herdr starts.
-- **Dashboard** (Alt+Shift+T): Live (agents by folder, sub-agents under the agent that started them, a running `until` loop on its row with Pause, Resume and Stop, and **Sweep ▸** on a row that started agents or tasks), Sessions, Usage, Quota and Stats tabs, plus an Insights window (Alt+Shift+I).
+- **Dashboard** (Alt+Shift+T): Live (agents by folder or as a Board by state, Pin, Settle and Quiet on a row, spending over a limit on its row, sub-agents under the agent that started them, a running `until` loop on its row with Pause, Resume and Stop, and **Sweep ▸** on a row that started agents or tasks), Sessions, Usage, Quota and Stats tabs, plus an Insights window (Alt+Shift+I).
 - **Thread** (Alt+Shift+C in an agent's terminal): its conversation beside the terminal, by day, with search, copy, copy code, and quote into the prompt; **Tree** shows the session among its forks, sub-agents and the agents it started. **⑂ Branch from here** asks a side question in a fork, as of a turn.
 - **Install and update:** the mod checks the CLI's version and offers **Install** or **Update** when it's missing or too old, downloading the release to `~/.local/bin` only when you click.
 - **Files, editor and Changes** (opt-in): each changed file badged with the agent that changed it; create, rename, move, drag and trash; a multi-tab editor with highlighting, word wrap and find and replace that never overwrites an agent's edit unseen; staging and discarding by hunk; review and undo by session.
