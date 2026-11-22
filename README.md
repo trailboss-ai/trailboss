@@ -61,6 +61,7 @@ trailboss events --json            # what changed since the last look, for scrip
 trailboss track                    # record which session runs where (from a timer, outside Herdr)
 trailboss resume --dry-run         # what a resume would type, and what it would skip and why
 trailboss log                      # what resume did: resumed, failed, skipped, forgotten
+trailboss actions                  # everything Trailboss itself started, typed, merged or removed, and how it went
 trailboss serve                    # a local server for frontends: the same JSON, behind a token
 trailboss statusline               # one line for a status bar: who needs you, today's cost, Claude's 5-hour use
 
@@ -223,7 +224,11 @@ Merged PRs from past weeks don't change, so they're kept in `stats-cache.json` n
 
 ### Doctor and version
 
-`trailboss doctor` checks what's working and what isn't, one line each with the command that fixes it: the version and the one the installed Herdr mod needs, the index, each source's folder, the Herdr mod's files (against the hashes its installer recorded), layout block and key bindings, tmux, whether `gh` is signed in, whether each provider's quota sign-in is there (by the file's presence only, never reading it), each `checkpoints.auto` folder, and recent failed automatic checkpoints. It only reads, and exits 1 when a check fails.
+`trailboss doctor` checks what's working and what isn't, one line each with the command that fixes it: the version and the one the installed Herdr mod needs, the index, each source's folder, the Herdr mod's files (against the hashes its installer recorded), layout block and key bindings, tmux, whether `gh` is signed in, whether each provider's quota sign-in is there (by the file's presence only, never reading it), each `checkpoints.auto` folder, recent failed automatic checkpoints, and whether the actions record is intact. It also points out agent settings that make a run riskier than it looks: permission checks skipped by default (Claude Code's `bypassPermissions`, Codex never asking with the sandbox off), allow rules that cover every shell command or file, and MCP servers started from a package with no pinned version (`npx pkg`, `npx pkg@latest`, `uvx pkg`), for Claude Code, Codex, Gemini CLI, Copilot CLI and opencode. Each line names the file and the rule only. It only reads, never an agent's settings included, and exits 1 when a check fails.
+
+### What Trailboss did
+
+`trailboss actions` lists what Trailboss itself did, newest first: each agent it started, message it typed, merge, removal, stop, restore, delete and resume, whether you ran the command or a trigger did (a queued message, a queued task, the automatic reviewer, `until`), with the session, terminal, task or team, and how it went. What was typed is never kept. `--since` and `-n` narrow it, `--json` for scripts. Each line carries the hash of the one before, so `doctor` notices an edited or removed line and says which.
 
 `trailboss version --json` gives `{version, api}`. `api` goes up only when a `--json` field is renamed or removed, so a frontend can check it works with the CLI it found.
 
@@ -280,6 +285,7 @@ trailboss task add --brief-file briefs/ --yes   # one task per .md and .txt file
 - **Worktrees inside the repository:** `task add` and `doctor` warn when the worktrees' folder is inside the repository and git doesn't ignore it, with the line to add. Trailboss never edits `.gitignore`.
 - **`task accept <n> --yes`:** fast-forwards the branch the task started from to the task's branch, then removes the worktree and branch. It never makes a merge commit or rebases: it's refused if a fast-forward isn't possible, the checkout has uncommitted changes, or the task is still reviewing (`--force` accepts it without the notes).
 - **`task rm <n> --yes`:** removes the worktree and branch, but keeps commits that aren't merged and uncommitted changes (and says so) unless `--force`.
+- **Definition versions:** a task records the version of its agent definition at `task add`, and `task show` shows it (and the reviewer's). A queued task whose definition changed since doesn't start: `task ls` says why, and `task definition <n> --accept --yes` has it start with the new version. One whose definition is gone waits too, until it's back or `task rm` takes the task back.
 
 ### Start one agent
 
