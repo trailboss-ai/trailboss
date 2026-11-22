@@ -18,7 +18,8 @@ Trailboss works across Claude Code, Codex, opencode, pi, Gemini CLI and Copilot 
 - **Plans and quotas:** each subscription against what its usage would cost at API prices; 5-hour and weekly windows, reset times and pace for Claude, Codex and Cursor.
 - **Delivery stats:** merged PRs, time to merge, AI-attributed share, and $ per merged PR, exact and estimated.
 - **Which agent changed what:** every changed file attributed to the agent session that changed it, exactly or probably; review a session's changes and undo them.
-- **Local server:** `trailboss serve` gives other frontends the same JSON the CLI prints, on `127.0.0.1`, behind a token.
+- **Local server:** `trailboss serve` gives other frontends the same JSON the CLI prints, on `127.0.0.1`, behind a token, and streams what changes as it happens.
+- **Status line:** `trailboss statusline`, one short line for Claude Code's status line, tmux or a shell prompt: who needs you, today's cost, Claude's 5-hour window.
 - **In Herdr:** a status block, a dashboard, and opt-in agent-aware Files, editor and Changes panels ([below](#in-herdr)).
 
 ## Install
@@ -61,6 +62,7 @@ trailboss track                    # record which session runs where (from a tim
 trailboss resume --dry-run         # what a resume would type, and what it would skip and why
 trailboss log                      # what resume did: resumed, failed, skipped, forgotten
 trailboss serve                    # a local server for frontends: the same JSON, behind a token
+trailboss statusline               # one line for a status bar: who needs you, today's cost, Claude's 5-hour use
 
 # Talking to agents
 trailboss send --to t3 "rebase on main"   # who would get it; --yes types it (--to all, repeatable)
@@ -75,6 +77,7 @@ trailboss task ls                  # each task: to do, working, needs you, ready
 trailboss task show 3              # what it did: last message, commits, files, checks; then:
 trailboss task accept 3 --yes      # fast-forward your branch to it (task rm 3 --yes: drop it)
 trailboss task review 3 --yes      # a second agent reviews it (task add --review: wait for one)
+trailboss task budget 3 15 --yes   # raise task 3's budget to $15 (task add --budget sets one)
 trailboss agents                   # the definitions task add --agent <name> starts; agents show NAME
 trailboss start codex --task "Look into the flaky login test"   # one agent, no worktree; --yes starts it
 trailboss team start build --task "Add CSV export"   # a lead and its members within a plan; --yes starts the lead
@@ -166,6 +169,7 @@ A recap is one line ("api while you were away (42m): 3 turns, 6 files, 11 comman
 - **finished:** a turn of 30 s or more ended (working → idle). `--json` also reports every finished turn, however short, as `turn_finished`;
 - **ended:** the agent is gone;
 - **same folder:** two or more agents are *working* at once in the same git worktree (or folder, outside git), where they can overwrite each other's changes. Announced once when it starts, or when another agent joins. Idle agents sharing a folder are normal, so `live` only marks them (`shares_with`).
+- **clash:** two open tasks, or a task and a running agent, change the same lines in one repository ([Tasks](#tasks)). Announced once per pair, and again when its files change.
 - **stuck:** an agent has been working for a while without making progress and isn't busy (`live` shows `stuck` and `quiet_min`). It may be waiting on a long command, so it's worded as "no progress", not as an error. Announced once per stall.
 
 `trailboss watch --desktop` keeps looking, every 10 s by default, and sends desktop notifications through `notify-send`. Claude Code only reports idle or busy, so for its sessions outside Herdr, "finished" works and "needs you" can't be told apart from idle. In Herdr, the status block notifies about agents **outside** Herdr's terminals (VS Code, plain terminals). Herdr already notifies about its own, so to avoid doubles Trailboss doesn't; set shared state `trailboss.notify.herdr` to true to get them all. Run one watcher at a time: they share what was last seen.
@@ -271,6 +275,8 @@ trailboss task add --brief-file briefs/ --yes   # one task per .md and .txt file
 - **`task show <n>`:** the card to read before accepting: the agent's last message, its commits, each file changed with lines added and removed, its evidence (the latest run of each test or build the agent ran, with pass or fail, and how `until` loops on it ended; a result from before the latest commit is marked stale), and whether `accept` would go through.
 - **Review:** with `task add --review` (or `"tasks": {"review": true}` in the config; `--no-review` for one command), a task whose agent is done stays `reviewing` until `task review <n> --yes` has started a second agent, with none of the first one's context, in a new terminal in the task's worktree. It reviews the diff against the brief, writes its notes to `task-reviews/` next to the index and changes nothing. `task show` prints the notes; `trailboss task report <n> --yes` passes them back to the task's agent through the send queue (shown in full first). Notes are for the commit the reviewer saw: once the task's agent commits again, the task is back to `reviewing`, with the command to review it again. `--agent` picks the reviewer (default: the task's agent kind, without its rules). Nothing starts a reviewer by itself.
 - **Later:** `task add --queue` (or more than `tasks.max_parallel` task agents working) records the task and makes nothing until there's room; `--after <n>` waits until task n is accepted, `--at <time>` until a time. A look (`events`, `watch`, the Herdr block) starts it once it's due, at most once; `task rm` takes it back. `--auto-review` (or `tasks.auto_review`) starts the reviewer on its own, once per new commit, when the task's agent comes to rest with commits.
+- **Budget:** `task add --budget <usd>` (or `"tasks": {"budget": 10}` in the config) caps what a task's agent and its reviewers spend together. Over it, the task is marked in `task ls`, `task show` and its agent's `live` row, one `spend_alert` event is sent, and its automatic reviewer and the tasks queued `--after` it wait. `task budget <n> <usd> --yes` raises it and `task budget <n> --clear --yes` takes it off. Nothing is typed into the agent or stopped: stopping it is up to you.
+- **Clashes:** when two open tasks, or a task and a running agent in the same repository, change the same lines, `task ls`, `task show` and both agents' `live` rows say so (`clash`, naming the other and the files); the same files in other lines get a weaker note. `events` and `watch` announce a clash once, and again when its files change. Nothing is stopped or changed.
 - **Worktrees inside the repository:** `task add` and `doctor` warn when the worktrees' folder is inside the repository and git doesn't ignore it, with the line to add. Trailboss never edits `.gitignore`.
 - **`task accept <n> --yes`:** fast-forwards the branch the task started from to the task's branch, then removes the worktree and branch. It never makes a merge commit or rebases: it's refused if a fast-forward isn't possible, the checkout has uncommitted changes, or the task is still reviewing (`--force` accepts it without the notes).
 - **`task rm <n> --yes`:** removes the worktree and branch, but keeps commits that aren't merged and uncommitted changes (and says so) unless `--force`.
@@ -381,9 +387,33 @@ Set `alerts.session_usd` (a session's cost), `alerts.folder_usd` (a folder's spe
 
 ### Local server
 
-`trailboss serve` runs a server on `127.0.0.1` (`--port`, default 7420) for frontends that would otherwise run the CLI and poll. `GET /live`, `/live/board`, `/sessions`, `/search?q=`, `/thread/<session>`, `/recap`, `/usage`, `/quota`, `/plans`, `/insights`, `/stats`, `/task`, `/queue`, `/doctor` and `/version` answer exactly what the command prints with `--json`, taking its flags as query options. It only answers reads: no actions, no typing, nothing started. It keeps the index current on its own (`--interval`), and the CLI keeps working beside it.
+`trailboss serve` runs a server on `127.0.0.1` (`--port`, default 7420) for frontends that would otherwise run the CLI and poll. `GET /live`, `/live/board`, `/sessions`, `/search?q=`, `/thread/<session>`, `/recap`, `/usage`, `/quota`, `/plans`, `/insights`, `/stats`, `/task`, `/queue`, `/doctor` and `/version` answer exactly what the command prints with `--json`, taking its flags as query options. These only answer reads: no actions, no typing, nothing started. It keeps the index current on its own (`--interval`), and the CLI keeps working beside it.
+
+`GET /events` streams what `trailboss events` reports, as server-sent events: each event as it's found, then the full `live` rows, from one look per interval however many clients follow. A client that reconnects with `Last-Event-ID` gets what it missed. While a client follows, the server does at each look what `trailboss watch` does (typing messages queued with `send --queue`, starting queued tasks and automatic reviewers, spend alerts, automatic checkpoints), each once whether the server, `watch` or `events` looked; with no client following, it does none of that.
 
 Every request needs a token: the first start makes one, keeps it in `serve-token` next to the index, and prints it once as a URL (`http://127.0.0.1:7420/#token=…`); send it as `Authorization: Bearer <token>`. Requests from other web pages are refused. The protocol is in the [specification](https://github.com/trailboss-ai/trailboss-specification).
+
+### Status line
+
+`trailboss statusline` prints one short line, such as `2 need you (w1:p3) · $12.48 today · 5h 42%, pace 78%`: how many agents need you and the first one's terminal, today's cost, and Claude's 5-hour window and its pace. `--json` gives the same parts. It's kept for a few seconds, and Claude's quota for two minutes, fetched in the background, so it's cheap to run every few seconds; `--no-quota` leaves the quota out. Trailboss never edits these files; add the line yourself:
+
+```jsonc
+// Claude Code: ~/.claude/settings.json
+"statusLine": { "type": "command", "command": "trailboss statusline" }
+```
+
+```sh
+# tmux: ~/.tmux.conf
+set -g status-right '#(trailboss statusline)'
+set -g status-interval 10
+
+# zsh
+setopt PROMPT_SUBST
+RPROMPT='$(trailboss statusline --no-quota)'
+
+# bash
+PS1='$(trailboss statusline --no-quota) \$ '
+```
 
 ## In Herdr
 
